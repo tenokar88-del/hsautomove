@@ -110,6 +110,7 @@ async def send_dm(discord_id: str, message: str):
 
 # ── Flask 앱 ──────────────────────────────────────────
 app = Flask(__name__)
+app.config["JSON_ENSURE_ASCII"] = False
 
 @app.route("/auth", methods=["POST"])
 def auth():
