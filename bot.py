@@ -145,7 +145,7 @@ def auth():
     players = run_coro(get_voice_channel_members(host_vc))
 
     # 호스트에게 DM 알림
-    run_coro(send_dm(host_discord_id, "🎲 TTS 세션이 시작되었습니다."))
+    run_coro(send_dm(host_discord_id, "🎲 TTS와 디스코드 밀담방 연동을 시작합니다."))
 
     return jsonify({
         "host_steam_id":   host_steam_id,
