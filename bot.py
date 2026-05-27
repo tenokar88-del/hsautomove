@@ -73,7 +73,7 @@ async def find_category_channels(voice_channel: discord.VoiceChannel) -> dict:
 async def get_voice_channel_members(voice_channel: discord.VoiceChannel) -> list:
     """같은 음성채널에 있는 멤버 목록 반환."""
     return [
-        {"discord_id": str(m.id), "nickname": m.display_name}
+        {"discord_id": str(m.id), "nickname": str(m)}
         for m in voice_channel.members
     ]
 
