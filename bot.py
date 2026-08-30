@@ -14,6 +14,7 @@ load_dotenv()
 # ── 설정 ──────────────────────────────────────────────
 BOT_TOKEN   = os.environ["DISCORD_BOT_TOKEN"]
 DATABASE_URL = os.environ["DATABASE_URL"]
+LOG_CHANNEL_ID = os.environ.get("LOG_CHANNEL_ID")
 
 CHANNEL_KEYWORDS = {
     "main":     "메인방",
@@ -108,6 +109,26 @@ async def send_dm(discord_id: str, message: str):
     user = await bot.fetch_user(int(discord_id))
     await user.send(message)
 
+async def send_auth_log(host_discord_id: str, players: list):
+    """/auth 성공 시 로그 채널에 호스트/유저 목록을 기록 (멘션 알림은 발생하지 않음)."""
+    if not LOG_CHANNEL_ID:
+        return
+
+    channel = bot.get_channel(int(LOG_CHANNEL_ID))
+    if channel is None:
+        return
+
+    host_mention = f"<@{host_discord_id}>"
+    player_mentions = " ".join(f"<@{p['discord_id']}>" for p in players) or "없음"
+
+    message = (
+        f"🎲**밀담방 연동**\n"
+        f"**호스트** : {host_mention}\n"
+        f"**유저** : {player_mentions}"
+    )
+
+    await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+
 # ── Flask 앱 ──────────────────────────────────────────
 app = Flask(__name__)
 app.config["JSON_ENSURE_ASCII"] = False
@@ -146,6 +167,9 @@ def auth():
 
     # 호스트에게 DM 알림
     run_coro(send_dm(host_discord_id, "🎲 TTS와 디스코드 밀담방 연동을 시작합니다."))
+
+    # 서버 로그 채널에 연동 기록 남기기 (멘션 알림 없이)
+    run_coro(send_auth_log(host_discord_id, players))
 
     return jsonify({
         "host_steam_id":   host_steam_id,
