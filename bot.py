@@ -169,7 +169,10 @@ def auth():
     run_coro(send_dm(host_discord_id, "🎲 TTS와 디스코드 밀담방 연동을 시작합니다."))
 
     # 서버 로그 채널에 연동 기록 남기기 (멘션 알림 없이)
-    run_coro(send_auth_log(host_discord_id, players))
+    try:
+        run_coro(send_auth_log(host_discord_id, players))
+    except Exception as e:
+        print(f"[send_auth_log] failed: {e}")  # 로깅만 하고 응답 흐름은 계속 진행
 
     return jsonify({
         "host_steam_id":   host_steam_id,
