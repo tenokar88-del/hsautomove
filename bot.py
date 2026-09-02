@@ -109,8 +109,28 @@ async def send_dm(discord_id: str, message: str):
     user = await bot.fetch_user(int(discord_id))
     await user.send(message)
 
+async def get_latest_forum_post(forum: discord.ForumChannel):
+    """포럼 채널에서 가장 최근에 생성된 포스트(스레드)를 반환. 없으면 None."""
+    latest = None
+
+    # 활성(active, 보관되지 않은) 스레드 중에서 탐색
+    for thread in forum.threads:
+        if latest is None or thread.created_at > latest.created_at:
+            latest = thread
+
+    # 활성 스레드가 없다면 보관된 스레드 중 가장 최근 것도 확인
+    if latest is None:
+        try:
+            async for thread in forum.archived_threads(limit=1):
+                latest = thread
+                break
+        except discord.Forbidden:
+            pass
+
+    return latest
+
 async def send_auth_log(host_discord_id: str, players: list):
-    """/auth 성공 시 로그 채널에 호스트/유저 목록을 기록 (멘션 알림은 발생하지 않음)."""
+    """/auth 성공 시 로그 채널(포럼)의 최근 포스트에 호스트/유저 목록을 기록 (멘션 알림은 발생하지 않음)."""
     if not LOG_CHANNEL_ID:
         return
 
@@ -127,7 +147,17 @@ async def send_auth_log(host_discord_id: str, players: list):
         f"**유저** : {player_mentions}"
     )
 
-    await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+    try:
+        target = channel
+        if isinstance(channel, discord.ForumChannel):
+            target = await get_latest_forum_post(channel)
+            if target is None:
+                print("[send_auth_log] 포럼에 포스트가 없음")
+                return
+
+        await target.send(message, allowed_mentions=discord.AllowedMentions.none())
+    except Exception as e:
+        print(f"[send_auth_log] failed: {e}")
 
 # ── Flask 앱 ──────────────────────────────────────────
 app = Flask(__name__)
@@ -168,11 +198,11 @@ def auth():
     # 호스트에게 DM 알림
     run_coro(send_dm(host_discord_id, "🎲 TTS와 디스코드 밀담방 연동을 시작합니다."))
 
-    # 서버 로그 채널에 연동 기록 남기기 (멘션 알림 없이)
+    # 서버 로그 채널(포럼)의 최근 포스트에 연동 기록 남기기 (멘션 알림 없이)
     try:
         run_coro(send_auth_log(host_discord_id, players))
     except Exception as e:
-        print(f"[send_auth_log] failed: {e}")  # 로깅만 하고 응답 흐름은 계속 진행
+        print(f"[send_auth_log] failed: {e}")
 
     return jsonify({
         "host_steam_id":   host_steam_id,
